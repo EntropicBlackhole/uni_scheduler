@@ -4,9 +4,17 @@ const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
 
+require('dotenv').config();
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const { Pool } = require('pg');
+const pool = new Pool({
+	connectionString: process.env.DATABASE_URL, 
+	ssl: { rejectUnauthorized: false },
+});
 
 // Config via env
 const PROXY_BASE = process.env.PROXY_BASE || 'https://horext.octatec.io/api/';
@@ -15,41 +23,44 @@ const PROXY_BASE = process.env.PROXY_BASE || 'https://horext.octatec.io/api/';
 const SCHEDULE_DIR = path.join(__dirname, 'schedules');
 fs.mkdirSync(SCHEDULE_DIR, { recursive: true });
 
-// 1) Save schedule
-app.post('/saveSchedule', (req, res) => {
-	const { name, studentCode, schedule } = req.body;
-	if (!name || !studentCode || !schedule) {
-		return res.status(400).json({ status: 'Missing fields' });
-	}
-	const filename = path.join(SCHEDULE_DIR, `${studentCode}.json`);
+// 1> Save schedule
+app.post('/saveSchedule', async (req, res) => {
+  const { name, studentCode, schedule } = req.body;
+  if (!name || !studentCode || !schedule) {
+    return res.status(400).json({ status: 'Missing fields' });
+  }
+  try {
+    await pool.query(
+      `INSERT INTO schedules (student_code, name, schedule)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (student_code) DO UPDATE
+       SET name = EXCLUDED.name, schedule = EXCLUDED.schedule`,
+      [studentCode, name, schedule]
+    );
+    res.json({ status: 'OK', savedTo: 'db' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// 2> Load schedule
+app.get('/loadSchedule/:studentCode', async (req, res) => {
 	try {
-		fs.writeFileSync(
-			filename,
-			JSON.stringify({ name, studentCode, schedule }, null, 2)
+		const { rows } = await pool.query(
+			'SELECT * FROM schedules WHERE student_code = $1',
+			[req.params.studentCode]
 		);
-		return res.json({ status: 'OK', savedTo: filename });
+		if (!rows.length) return res.status(404).json({ status: 'not found' });
+		res.json({ status: 'OK', data: rows[0] });
 	} catch (err) {
 		console.error(err);
-		return res.status(500).json({ status: 'error', message: err.message });
+		res.status(500).json({ status: 'error', message: err.message });
 	}
 });
 
-// 2) Load schedule
-app.get('/loadSchedule/:studentCode', (req, res) => {
-	const studentCode = req.params.studentCode;
-	const filename = path.join(SCHEDULE_DIR, `${studentCode}.json`);
-	if (!fs.existsSync(filename))
-		return res.status(404).json({ status: 'not found' });
-	try {
-		const data = JSON.parse(fs.readFileSync(filename, 'utf8'));
-		return res.json({ status: 'OK', data });
-	} catch (err) {
-		console.error(err);
-		return res.status(500).json({ status: 'error', message: err.message });
-	}
-});
-
-// 3) Proxy for /api/* -> PROXY_BASE + path
+// 3> Proxy for /api/* -> PROXY_BASE + path
+// !! note: using * kinda breaks some regexp route inside one of the node modules for some reason so don't use it
 app.use('/api', async (req, res) => {
 	try {
 		// build target path from originalUrl after /api/
@@ -72,9 +83,21 @@ app.use('/api', async (req, res) => {
 	}
 });
 
-// 4) (Optional) Serve static frontend placed in /public
+// 4> (Optional) Serve static frontend placed in /public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Start
+// finally start
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on http://0.0.0.0:${PORT}`));
+
+// Ensure schedules table exists
+(async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS schedules (
+      id SERIAL PRIMARY KEY,
+      student_code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      schedule JSONB NOT NULL
+    );
+  `);
+})();
