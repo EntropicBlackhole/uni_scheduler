@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Schedule Selector</title>
+		<style>
+			body {
+				font-family: sans-serif;
+				margin: 0;
+				padding: 0;
+			}
+
+			h2 {
+				margin: 0.5rem 0;
+			}
+
+			.section {
+				padding: 1rem;
+				border-bottom: 2px solid #ccc;
+			}
+
+			.popup {
+				position: fixed;
+				top: 10%;
+				left: 50%;
+				transform: translateX(-50%);
+				background: white;
+				border: 1px solid #ccc;
+				padding: 1rem;
+				max-height: 70vh;
+				overflow-y: auto;
+				display: none;
+				width: 600px;
+				z-index: 1000;
+			}
+
+			.popup h3 {
+				margin-top: 0;
+			}
+
+			.section-block {
+				margin-bottom: 1rem;
+				border-bottom: 1px solid #ddd;
+				padding-bottom: 0.5rem;
+			}
+
+			.sessions {
+				margin-left: 1rem;
+				font-size: 0.9em;
+			}
+
+			/* Calendar grid */
+			.calendar {
+				display: grid;
+				grid-template-columns: 60px repeat(6, 1fr);
+				/* Time + Mon-Sat */
+				border: 1px solid #ccc;
+				margin-top: 1rem;
+				position: relative;
+				/* <-- add this */
+			}
+
+			.calendar div {
+				border: 1px solid #eee;
+				min-height: 40px;
+				position: relative;
+				font-size: 0.8em;
+				overflow: hidden;
+			}
+
+			.calendar .time-col {
+				background: #f9f9f9;
+				text-align: right;
+				padding-right: 4px;
+			}
+
+			.event {
+				position: absolute;
+				left: 2px;
+				right: 2px;
+				background: rgba(0, 123, 255, 0.7);
+				color: white;
+				font-size: 0.75em;
+				padding: 2px;
+				border-radius: 4px;
+				overflow: hidden;
+			}
+
+			.calendar-header {
+				display: contents;
+			}
+
+			.calendar-header div {
+				background: #f0f0f0;
+				font-weight: bold;
+				text-align: center;
+				border-bottom: 2px solid #ccc;
+			}
+
+			body {
+				font-family: 'Segoe UI', Tahoma, sans-serif;
+				background: #f9fafc;
+				color: #333;
+				margin: 0;
+				padding: 20px;
+			}
+
+			h2 {
+				font-weight: 500;
+				margin-bottom: 12px;
+			}
+
+			section {
+				background: white;
+				border-radius: 8px;
+				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+				padding: 20px;
+				margin-bottom: 20px;
+			}
+
+			button {
+				background: #3788d8;
+				border: none;
+				color: white;
+				padding: 10px 16px;
+				border-radius: 6px;
+				font-size: 14px;
+				font-weight: 500;
+				cursor: pointer;
+				transition: background 0.2s ease;
+				margin: 4px 4px;
+			}
+
+			button:hover {
+				background: #2c6faf;
+			}
+
+			input,
+			select {
+				padding: 8px 12px;
+				border: 1px solid #ccc;
+				border-radius: 6px;
+				font-size: 14px;
+				margin: 4px 0;
+				width: 100%;
+				box-sizing: border-box;
+			}
+
+			input:focus,
+			select:focus {
+				outline: none;
+				border-color: #3788d8;
+				box-shadow: 0 0 0 2px rgba(55, 136, 216, 0.2);
+			}
+
+			label {
+				font-size: 13px;
+				font-weight: 500;
+				margin-top: 8px;
+				display: block;
+				color: #444;
+			}
+
+			label.section-option {
+				display: flex;
+				align-items: center;
+				gap: 6px; /* spacing between checkbox and text */
+				cursor: pointer;
+				margin: 4px 0;
+				font-size: 14px;
+			}
+			label.section-option input[type='checkbox'] {
+				accent-color: #007bff; /* modern browsers: blue tick, consistent style */
+				width: 16px;
+				height: 16px;
+				cursor: pointer;
+			}
+		</style>
+		<link
+			href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css"
+			rel="stylesheet" />
+		<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+		<script
+			src="https://cdn.plot.ly/plotly-3.1.0.min.js"
+			charset="utf-8"></script>
+	</head>
+
+	<body>
+		<!-- SECTION 1 -->
+		<div
+			class="section"
+			id="section1">
+			<h2>Selecciona tus cursos</h2>
+			<select id="specialitySelect" onchange="agradecerAlUniverso(this.value)">
+				<option value="2">Ing de Software (I3)</option>
+				<option value="11">Ing Industrial (I1)</option>
+			</select>
+			<script>
+				function agradecerAlUniverso(speciality) {
+					if (speciality == '2') {
+						alert('Gracias universo por dejarme estudiar Ing. de Software<3');
+					} else if (speciality == '11') {
+						alert('Otro dia que agradezco al universo no ser de Industrial :)');
+					}
+				}
+			</script>
+			<input
+				type="text"
+				id="searchBox"
+				placeholder="Busca un curso..." />
+			<button id="searchBtn">Search</button>
+			<div id="results"></div>
+			<h3>Calendario Semanal</h3>
+			<button id="addCustomEventBtn">Añadir Evento/Extra</button>
+
+			<div
+				id="customEventPopup"
+				style="
+					display: none;
+					background: #fff;
+					border: 1px solid #ccc;
+					padding: 16px;
+					border-radius: 8px;
+					position: fixed;
+					top: 20%;
+					left: 50%;
+					transform: translateX(-50%);
+					z-index: 1000;
+					box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+				">
+				<h3>Añadir evento personalizado</h3>
+				<label>Nombre del evento</label>
+				<input
+					type="text"
+					id="customName" />
+
+				<label>Dia</label>
+				<select id="customDay">
+					<option value="1">Lunes</option>
+					<option value="2">Martes</option>
+					<option value="3">Miercoles</option>
+					<option value="4">Jueves</option>
+					<option value="5">Viernes</option>
+					<option value="6">Sabado</option>
+					<option value="7">Domingo</option>
+				</select>
+
+				<label>Tiempo de inicio</label>
+				<input
+					type="time"
+					id="customStart" />
+
+				<label>Tiempo de final? culminacion xd</label>
+				<input
+					type="time"
+					id="customEnd" />
+
+				<div style="margin-top: 12px">
+					<button id="saveCustomBtn">Guardar</button>
+					<button
+						id="cancelCustomBtn"
+						style="background: #aaa">
+						Cancelar
+					</button>
+				</div>
+			</div>
+
+			<div
+				id="calendar"
+				style="max-width: 1100px; margin: 1rem auto"></div>
+		</div>
+		<!-- SECTION 2 (placeholder for sinewave & export later) -->
+		<div
+			class="section"
+			id="section2">
+			<h2>Analisis</h2>
+			<div id="plot"></div>
+		</div>
+
+		<div id="save-section">
+			<h3>Enviar mi horario</h3>
+			<label>
+				Nombre:
+				<input
+					type="text"
+					id="studentName"
+					required />
+			</label>
+			<label>
+				Codigo:
+				<input
+					type="text"
+					id="studentCode"
+					required />
+			</label>
+			<button id="saveBtn">Guardar</button>
+		</div>
+
+		<!-- POPUP -->
+		<div
+			id="popup"
+			class="popup">
+			<h3 id="popupTitle"></h3>
+			<div id="sectionsList"></div>
+			<button id="popupSave">Guardar</button>
+			<button id="popupCancel">Cancelar</button>
+		</div>
+
+		<script>
+			const API_BASE = 'http://localhost:3000'; // proxy
+			const resultsDiv = document.getElementById('results');
+			const popup = document.getElementById('popup');
+			const popupTitle = document.getElementById('popupTitle');
+			const sectionsList = document.getElementById('sectionsList');
+			const calendar = document.getElementById('calendar');
+
+			let currentSubject = null;
+			let selectedSections = [];
+
+			// --- search ---
+			document
+				.getElementById('searchBtn')
+				.addEventListener('click', async () => {
+					const q = document.getElementById('searchBox').value;
+					const url = `${API_BASE}/api/subjects?search=${encodeURIComponent(
+						q
+					)}&speciality=${document.getElementById('specialitySelect').value}&hourlyLoad=322`;
+					const res = await fetch(url);
+					const data = await res.json();
+					console.log(data);
+					resultsDiv.innerHTML = `${data.content.length} curso${data.content.length == 1 ? '' : 's'} encontrado${data.content.length == 1 ? '' : 's'}<br>`;
+					data.content.forEach((sub) => {
+						const btn = document.createElement('button');
+						btn.textContent = `${sub.course.id} - ${sub.course.name}`;
+						btn.onclick = () => showSections(sub);
+						resultsDiv.appendChild(btn);
+						resultsDiv.appendChild(document.createElement('br'));
+					});
+				});
+
+			// --- show popup with sections ---
+			async function showSections(subject) {
+				currentSubject = subject;
+				popupTitle.textContent = `${subject.course.id} - ${subject.course.name}`;
+				// sectionsList.innerHTML = 'Loading...';
+
+				const schedulesRes = await fetch(
+					`${API_BASE}/api/scheduleSubjects?subject=${subject.id}&hourlyLoad=322`
+				);
+				const schedules = await schedulesRes.json();
+
+				const scheduleIds = schedules.map((s) => s.schedule.id);
+				if (scheduleIds.length === 0) {
+					sectionsList.innerHTML = 'No hay secciones disponibles';
+					popup.style.display = 'block';
+					return;
+				}
+
+				const sessionsRes = await fetch(
+					`${API_BASE}/api/classSessions?schedules=${scheduleIds.join(',')}`
+				);
+				const sessions = await sessionsRes.json();
+
+				const bySection = {};
+				sessions.forEach((sess) => {
+					const sectionId = schedules.find(
+						(s) => s.schedule.id === sess.schedule.id
+					)?.schedule.section.id;
+					if (!bySection[sectionId]) bySection[sectionId] = [];
+					bySection[sectionId].push({
+						day: sess.day,
+						start: sess.startTime,
+						end: sess.endTime,
+						classroom: sess.classroom?.code,
+						teacher: sess.teacher?.fullName,
+						type: sess.type?.code,
+					});
+				});
+
+				sectionsList.innerHTML = '';
+				Object.entries(bySection).forEach(([sectionId, sessList]) => {
+					const div = document.createElement('div');
+					div.className = 'section-block';
+					const label = document.createElement('label');
+					label.className = 'section-option';
+					const cb = document.createElement('input');
+					cb.type = 'checkbox';
+					cb.value = sectionId;
+					label.appendChild(cb);
+					label.append(` Section ${sectionId}`);
+					div.appendChild(label);
+
+					const ul = document.createElement('ul');
+					ul.className = 'sessions';
+					sessList.forEach((s) => {
+						const li = document.createElement('li');
+						li.textContent = `Day ${s.day}, ${s.start}-${s.end}, ${s.classroom}, ${s.type}, ${s.teacher}`;
+						ul.appendChild(li);
+					});
+					div.appendChild(ul);
+					sectionsList.appendChild(div);
+				});
+
+				popup.style.display = 'block';
+			}
+
+			document.getElementById('popupCancel').onclick = () => {
+				popup.style.display = 'none';
+			};
+
+			document.getElementById('popupSave').onclick = () => {
+				const checkboxes = sectionsList.querySelectorAll(
+					'input[type=checkbox]:checked'
+				);
+				checkboxes.forEach((cb) => {
+					const sectionId = cb.value;
+					const sessions = Array.from(
+						cb.closest('.section-block').querySelectorAll('ul li')
+					).map((li) => li.textContent);
+
+					const realSessions = [];
+					cb.closest('.section-block')
+						.querySelectorAll('ul li')
+						.forEach((li) => {
+							const parts = li.textContent.split(',');
+							realSessions.push({
+								day: parseInt(parts[0].replace('Day', '').trim()),
+								time: parts[1].trim(),
+								classroom: parts[2].trim(),
+								type: parts[3].trim(),
+								teacher: parts[4]?.trim(),
+							});
+						});
+
+					selectedSections.push({
+						subjectId: currentSubject.id,
+						subjectName: `${currentSubject.course.id} - ${currentSubject.course.name}`,
+						sectionId,
+						sessions: realSessions,
+					});
+
+					refreshCalendar(); // update FullCalendar
+					renderSineWave(); // update sine wave
+				});
+
+				refreshCalendar();
+				renderSineWave(); // update sine wave
+
+				popup.style.display = 'none';
+			};
+			/* ---------- FullCalendar integration (paste near your other functions) ---------- */
+
+			// color palette for different courses/sections
+			const FC_COLORS = [
+				'#1E90FF',
+				'#28A745',
+				'#FF8C00',
+				'#6F42C1',
+				'#DC3545',
+				'#20C997',
+				'#FFC107',
+				'#17A2B8',
+			];
+
+			function getMonday(refDate = new Date()) {
+				// return a Date object pointing to Monday of the reference week (00:00)
+				const d = new Date(refDate);
+				const day = (d.getDay() + 6) % 7; // make Monday=0
+				d.setHours(0, 0, 0, 0);
+				d.setDate(d.getDate() - day);
+				return d;
+			}
+
+			function makeISODateForWeekday(mondayDate, weekdayIndex, timeStr) {
+				// weekdayIndex: 0=Mon .. 6=Sun
+				// timeStr: "HH:MM:SS"
+				const [h, m, s] = timeStr.split(':').map(Number);
+				const d = new Date(mondayDate);
+				d.setDate(mondayDate.getDate() + weekdayIndex);
+				d.setHours(h, m, s || 0, 0);
+				return d.toISOString();
+			}
+
+			function sessionsToEvents(selectedSections) {
+				const events = [];
+				const monday = getMonday(); // you can change the reference week if needed
+				selectedSections.forEach((sec, i) => {
+					const color = FC_COLORS[i % FC_COLORS.length];
+					(sec.sessions || []).forEach((sess) => {
+						// sess.day expected 1..7 (Mon..Sun). convert to 0..6
+						const weekday0 = typeof sess.day === 'number' ? sess.day - 1 : 0;
+						// sess.start / sess.end should be "HH:MM:SS" (or "HH:MM")
+						const startISO = makeISODateForWeekday(
+							monday,
+							weekday0,
+							sess.start || (sess.time && sess.time.split('-')[0]) || '08:00:00'
+						);
+						const endISO = makeISODateForWeekday(
+							monday,
+							weekday0,
+							sess.end || (sess.time && sess.time.split('-')[1]) || '10:00:00'
+						);
+
+						events.push({
+							title: `${sec.subjectName} (${sec.sectionId})`,
+							start: startISO,
+							end: endISO,
+							backgroundColor: color,
+							borderColor: '#ffffff',
+							extendedProps: {
+								classroom: sess.classroom,
+								teacher: sess.teacher,
+								type: sess.type,
+							},
+						});
+					});
+				});
+				return events;
+			}
+
+			/* initialize calendar */
+			let fcCalendar = null;
+			function initFullCalendar() {
+				const calendarEl = document.getElementById('calendar');
+				fcCalendar = new FullCalendar.Calendar(calendarEl, {
+					initialView: 'timeGridWeek',
+					firstDay: 1, // Monday
+					allDaySlot: false,
+					slotMinTime: '07:00:00',
+					slotMaxTime: '22:00:00',
+					height: 'auto',
+					headerToolbar: {
+						left: 'prev,next today',
+						center: 'title',
+						right: 'timeGridWeek,dayGridMonth',
+					},
+					eventTimeFormat: {
+						hour: 'numeric',
+						minute: '2-digit',
+						hour12: false,
+					},
+					eventDidMount: function (info) {
+						// optional: tooltip with details
+						const props = info.event.extendedProps;
+						const tip = `Aula: ${props.classroom || '-'}\n${
+							props.type || '-'
+						}\nProfesor: ${props.teacher || '-'}`;
+						info.el.setAttribute('title', tip);
+					},
+				});
+				fcCalendar.render();
+			}
+
+			/* call this to refresh displayed events after selectedSections changes */
+			function refreshCalendar() {
+				if (!fcCalendar) initFullCalendar();
+				fcCalendar.removeAllEvents();
+				const events = sessionsToEvents(selectedSections);
+				fcCalendar.addEventSource(events);
+			}
+
+			/* call refreshCalendar() after popup Save where you push to selectedSections */
+		</script>
+		<script>
+			const WEEK_HOURS = 168; // 7*24
+			const AMPLITUDE = 1;
+
+			// --- Utils ---
+			function hourOfWeek(day, hour) {
+				return day * 24 + hour;
+			}
+
+			// Turn intervals into smooth sin^2 pulses
+			function buildIntervals(busyList) {
+				const intervals = [];
+				let tPoints = [0];
+				busyList.forEach(([a, b]) => tPoints.push(a, b));
+				tPoints.push(WEEK_HOURS);
+				tPoints = [...new Set(tPoints)].sort((x, y) => x - y);
+
+				for (let i = 0; i < tPoints.length - 1; i++) {
+					const a = tPoints[i],
+						b = tPoints[i + 1];
+					const busy = busyList.some(([x, y]) => a >= x && b <= y);
+					intervals.push({ a, b, busy });
+				}
+				return intervals;
+			}
+
+			function f(t, intervals) {
+				t = ((t % WEEK_HOURS) + WEEK_HOURS) % WEEK_HOURS;
+				for (const { a, b, busy } of intervals) {
+					if (t >= a && t <= b) {
+						const phase = (Math.PI * (t - a)) / (b - a);
+						const value = Math.sin(phase) ** 2;
+						return (busy ? +1 : -1) * AMPLITUDE * value;
+					}
+				}
+				return 0;
+			}
+
+			// --- Main logic ---
+			function renderSineWave() {
+				// Example: map schedule items → busy intervals
+				// For demo we’ll assume Mon 8-12, Mon 13-16 (hardcoded)
+				// You should extend this mapping with real course hours
+				const busyIntervals = [];
+				const busyIntervals2 = []; // pidoperdon, no se me ocurre ningun otro nombre xd
+
+				selectedSections.forEach((section) => {
+					section.sessions.forEach((session) => {
+						const sStart = session.time.split('-')[0];
+						const sEnd = session.time.split('-')[1];
+						// Convert "HH:MM:SS" → float hours
+						const [sh, sm] = sStart.split(':').map(Number);
+						const [eh, em] = sEnd.split(':').map(Number);
+						const startHour = sh + sm / 60;
+						const endHour = eh + em / 60;
+
+						// `day` from API is 1=Monday, 2=Tuesday,...,7=Sunday
+						const start = hourOfWeek(session.day - 1, startHour);
+						const end = hourOfWeek(session.day - 1, endHour);
+
+						busyIntervals.push({
+							start,
+							end,
+							code: section.subjectName.split(' - ')[0],
+						});
+
+						busyIntervals2.push([start, end]);
+					});
+				});
+
+				const intervals = buildIntervals(busyIntervals2); // yara
+
+				const times = [],
+					values = [];
+				for (let t = 0; t <= 168; t += 0.1) {
+					// first 2 days
+					times.push(t);
+					values.push(f(t, intervals));
+				}
+
+				const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+				const shapes = [];
+				const annotations = [];
+
+				for (let d = 0; d <= 7; d++) {
+					const x = d * 24;
+					shapes.push({
+						type: 'line',
+						x0: x,
+						x1: x,
+						y0: -1,
+						y1: 1,
+						line: { color: '#ccc', width: 1, dash: 'dot' },
+					});
+					if (d < 7) {
+						annotations.push({
+							x: x + 12,
+							y: 1.1,
+							text: dayNames[d],
+							showarrow: false,
+							font: { family: 'Segoe UI, Tahoma, sans-serif', size: 12 },
+						});
+					}
+				}
+				const crestAnnotations = busyIntervals.map((interval) => {
+					const mid = (interval.start + interval.end) / 2;
+					return {
+						x: mid,
+						y: 1.05,
+						text: interval.code,
+						showarrow: false,
+						font: {
+							family: 'Segoe UI, Tahoma, sans-serif',
+							size: 11,
+							color: '#3788d8',
+						},
+					};
+				});
+
+				Plotly.newPlot(
+					'plot',
+					[
+						{
+							x: times,
+							y: values,
+							mode: 'lines',
+							name: 'Onda Horaria',
+							line: { color: '#3788d8', width: 2 },
+						},
+					],
+					{
+						title: {
+							text: 'Horario Semanal',
+							font: { size: 20, family: 'Segoe UI, Tahoma, sans-serif' },
+						},
+						paper_bgcolor: 'white',
+						plot_bgcolor: 'white',
+						xaxis: {
+							title: 'Horas desde Lunes 0:00',
+							tickfont: { family: 'Segoe UI, Tahoma, sans-serif', size: 12 },
+							showgrid: false,
+						},
+						yaxis: {
+							title: 'Ocupado(+), Libre(-)',
+							tickfont: { family: 'Segoe UI, Tahoma, sans-serif', size: 12 },
+							showgrid: false,
+						},
+						margin: { l: 60, r: 20, t: 60, b: 50 },
+						shapes: shapes,
+						annotations: [...annotations, ...crestAnnotations],
+					},
+					{ displayModeBar: true, responsive: true }
+				);
+			}
+
+			// --- Sharing ---
+			document.getElementById('saveBtn').onclick = async () => {
+				const name = document.getElementById('studentName').value.trim();
+				const code = document.getElementById('studentCode').value.trim();
+
+				if (!name || !code) {
+					return alert(
+						'Porfavor rellenar tanto el nombre como el codigo de estudiante'
+					);
+				}
+
+				// Build busyIntervals just like we did for sinewaves
+				const busyIntervals = [];
+				selectedSections.forEach((section) => {
+					section.sessions.forEach((session) => {
+						const sStart = session.time.split('-')[0];
+						const sEnd = session.time.split('-')[1];
+						const [sh, sm] = sStart.split(':').map(Number);
+						const [eh, em] = sEnd.split(':').map(Number);
+						const startHour = sh + sm / 60;
+						const endHour = eh + em / 60;
+
+						busyIntervals.push({
+							day: session.day,
+							start: startHour,
+							end: endHour,
+							type: session.type,
+							classroom: session.classroom,
+							teacher: session.teacher,
+							section: section.section,
+						});
+					});
+				});
+
+				const payload = {
+					name,
+					studentCode: code,
+					schedule: busyIntervals,
+				};
+
+				try {
+					const res = await fetch('http://localhost:3000/saveSchedule', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(payload),
+					});
+					const msg = await res.json();
+					alert('Guardado');
+				} catch (err) {
+					console.error(err);
+					alert('Hubo un error, contacta al delegado xd');
+				}
+			};
+		</script>
+		<script>
+			const customEventPopup = document.getElementById('customEventPopup');
+			document.getElementById('addCustomEventBtn').onclick = () => {
+				customEventPopup.style.display = 'block';
+			};
+
+			document.getElementById('cancelCustomBtn').onclick = () => {
+				customEventPopup.style.display = 'none';
+			};
+
+			document.getElementById('saveCustomBtn').onclick = () => {
+				const name = document.getElementById('customName').value.trim();
+				const day = parseInt(document.getElementById('customDay').value);
+				const start = document.getElementById('customStart').value;
+				const end = document.getElementById('customEnd').value;
+				console.log(name, day, start, end);
+				if (!name || !start || !end) {
+					alert('Porfavor rellena todos los campos xd');
+					return;
+				}
+
+				selectedSections.push({
+					subjectId: 'custom-' + Date.now(),
+					sectionId: 'evento',
+					subjectName: name,
+					sessions: [
+						{
+							day,
+							time: `${start}:00-${end}:00`,
+							classroom: 'N/A',
+							teacher: 'Custom',
+							type: 'C',
+						},
+					],
+				});
+				customEventPopup.style.display = 'none';
+				refreshCalendar();
+			};
+		</script>
+	</body>
+</html>
