@@ -33,6 +33,7 @@ console.log(schedule)
 console.log(typeof schedule)
 //	schedule = JSON.parse(schedule); //test
   try {
+console.log("pre-query")
     await pool.query(
       `INSERT INTO schedules (student_code, name, schedule)
        VALUES ($1, $2, $3)
@@ -40,6 +41,7 @@ console.log(typeof schedule)
        SET name = EXCLUDED.name, schedule = EXCLUDED.schedule`,
       [studentCode, name, schedule]
 		);
+console.log("post-query")
 		
     res.json({ status: 'OK', savedTo: 'db' });
   } catch (err) {
