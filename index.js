@@ -28,7 +28,8 @@ app.post('/saveSchedule', async (req, res) => {
   const { name, studentCode, schedule } = req.body;
   if (!name || !studentCode || !schedule) {
     return res.status(400).json({ status: 'Missing fields' });
-  }
+	}
+	schedule = JSON.parse(schedule); //test
   try {
     await pool.query(
       `INSERT INTO schedules (student_code, name, schedule)
@@ -36,7 +37,8 @@ app.post('/saveSchedule', async (req, res) => {
        ON CONFLICT (student_code) DO UPDATE
        SET name = EXCLUDED.name, schedule = EXCLUDED.schedule`,
       [studentCode, name, schedule]
-    );
+		);
+		
     res.json({ status: 'OK', savedTo: 'db' });
   } catch (err) {
     console.error(err);
