@@ -34,12 +34,13 @@ console.log(typeof schedule)
 //	schedule = JSON.parse(schedule); //test
   try {
 console.log("pre-query")
+console.log("Saving schedule:", JSON.stringify(schedule));
     await pool.query(
       `INSERT INTO schedules (student_code, name, schedule)
        VALUES ($1, $2, $3)
        ON CONFLICT (student_code) DO UPDATE
        SET name = EXCLUDED.name, schedule = EXCLUDED.schedule`,
-      [studentCode, name, schedule]
+      [studentCode, name, JSON.stringify(schedule)]
 		);
 console.log("post-query")
 		
