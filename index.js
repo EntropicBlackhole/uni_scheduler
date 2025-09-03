@@ -29,7 +29,9 @@ app.post('/saveSchedule', async (req, res) => {
   if (!name || !studentCode || !schedule) {
     return res.status(400).json({ status: 'Missing fields' });
 	}
-	schedule = JSON.parse(schedule); //test
+console.log(schedule)
+console.log(typeof schedule)
+//	schedule = JSON.parse(schedule); //test
   try {
     await pool.query(
       `INSERT INTO schedules (student_code, name, schedule)
