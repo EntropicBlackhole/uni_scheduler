@@ -191,16 +191,22 @@
 			class="section"
 			id="section1">
 			<h2>Selecciona tus cursos</h2>
-			<select id="specialitySelect" onchange="agradecerAlUniverso(this.value)">
+			<select
+				id="specialitySelect"
+				onchange="agradecerAlUniverso(this.value)">
 				<option value="2">Ing de Software (I3)</option>
 				<option value="11">Ing Industrial (I1)</option>
+				<option value="12">Ing de Sistemas (I2)</option>
 			</select>
 			<script>
-				function agradecerAlUniverso(speciality) {
+				async function agradecerAlUniverso(speciality) {
+				  await fetch("https://hortex.io")
 					if (speciality == '2') {
 						alert('Gracias universo por dejarme estudiar Ing. de Software<3');
 					} else if (speciality == '11') {
 						alert('Otro dia que agradezco al universo no ser de Industrial :)');
+					} else if (speciality == '12') {
+					  alert('Menos mal no eres Industrial')
 					}
 				}
 			</script>
@@ -210,6 +216,13 @@
 				placeholder="Busca un curso..." />
 			<button id="searchBtn">Search</button>
 			<div id="results"></div>
+			<span style="font-size: 0.1em; color: #666">..</span>
+			<input
+				type="text"
+				id="loadBox"
+				value="20251060I"
+				placeholder="Coloca tu codigo..." />
+			<button id="loadBtn">Carga tu horario</button>
 			<h3>Calendario Semanal</h3>
 			<button id="addCustomEventBtn">Añadir Evento/Extra</button>
 
@@ -307,7 +320,7 @@
 		</div>
 
 		<script>
-			const API_BASE = "";
+			const API_BASE = 'https://uni-scheduler.onrender.com';
 			const resultsDiv = document.getElementById('results');
 			const popup = document.getElementById('popup');
 			const popupTitle = document.getElementById('popupTitle');
@@ -324,11 +337,14 @@
 					const q = document.getElementById('searchBox').value;
 					const url = `${API_BASE}/api/subjects?search=${encodeURIComponent(
 						q
-					)}&speciality=${document.getElementById('specialitySelect').value}&hourlyLoad=322`;
+					)}&speciality=${
+						document.getElementById('specialitySelect').value
+					}&hourlyLoad=322`;
 					const res = await fetch(url);
 					const data = await res.json();
-					console.log(data);
-					resultsDiv.innerHTML = `${data.content.length} curso${data.content.length == 1 ? '' : 's'} encontrado${data.content.length == 1 ? '' : 's'}<br>`;
+					resultsDiv.innerHTML = `${data.content.length} curso${
+						data.content.length == 1 ? '' : 's'
+					} encontrado${data.content.length == 1 ? '' : 's'}<br>`;
 					data.content.forEach((sub) => {
 						const btn = document.createElement('button');
 						btn.textContent = `${sub.course.id} - ${sub.course.name}`;
@@ -422,13 +438,16 @@
 					cb.closest('.section-block')
 						.querySelectorAll('ul li')
 						.forEach((li) => {
+						  console.log(li)
 							const parts = li.textContent.split(',');
+							
 							realSessions.push({
 								day: parseInt(parts[0].replace('Day', '').trim()),
-								time: parts[1].trim(),
-								classroom: parts[2].trim(),
-								type: parts[3].trim(),
-								teacher: parts[4]?.trim(),
+								start: parts[1].trim(),
+								end: parts[2].trim(),
+								classroom: parts[3].trim(),
+								type: parts[4].trim(),
+								teacher: parts[5]?.trim(),
 							});
 						});
 
@@ -486,19 +505,21 @@
 				const monday = getMonday(); // you can change the reference week if needed
 				selectedSections.forEach((sec, i) => {
 					const color = FC_COLORS[i % FC_COLORS.length];
+					
 					(sec.sessions || []).forEach((sess) => {
+					 
 						// sess.day expected 1..7 (Mon..Sun). convert to 0..6
 						const weekday0 = typeof sess.day === 'number' ? sess.day - 1 : 0;
 						// sess.start / sess.end should be "HH:MM:SS" (or "HH:MM")
 						const startISO = makeISODateForWeekday(
 							monday,
 							weekday0,
-							sess.start || (sess.time && sess.time.split('-')[0]) || '08:00:00'
+							sess.start
 						);
 						const endISO = makeISODateForWeekday(
 							monday,
 							weekday0,
-							sess.end || (sess.time && sess.time.split('-')[1]) || '10:00:00'
+							sess.end
 						);
 
 						events.push({
@@ -526,8 +547,8 @@
 					initialView: 'timeGridWeek',
 					firstDay: 1, // Monday
 					allDaySlot: false,
-					slotMinTime: '07:00:00',
-					slotMaxTime: '22:00:00',
+					slotMinTime: '06:00:00',
+					slotMaxTime: '23:00:00',
 					height: 'auto',
 					headerToolbar: {
 						left: 'prev,next today',
@@ -606,14 +627,12 @@
 				// You should extend this mapping with real course hours
 				const busyIntervals = [];
 				const busyIntervals2 = []; // pidoperdon, no se me ocurre ningun otro nombre xd
-
+				
 				selectedSections.forEach((section) => {
 					section.sessions.forEach((session) => {
-						const sStart = session.time.split('-')[0];
-						const sEnd = session.time.split('-')[1];
 						// Convert "HH:MM:SS" → float hours
-						const [sh, sm] = sStart.split(':').map(Number);
-						const [eh, em] = sEnd.split(':').map(Number);
+						const [sh, sm] = session.start.split(':').map(Number);
+						const [eh, em] = session.end.split(':').map(Number);
 						const startHour = sh + sm / 60;
 						const endHour = eh + em / 60;
 
@@ -717,97 +736,14 @@
 			}
 
 			// --- Sharing ---
-			document.getElementById('saveBtn').onclick = async () => {
-				const name = document.getElementById('studentName').value.trim();
-				const code = document.getElementById('studentCode').value.trim();
 
-				if (!name || !code) {
-					return alert(
-						'Porfavor rellenar tanto el nombre como el codigo de estudiante'
-					);
-				}
-
-				// Build busyIntervals just like we did for sinewaves
-				const busyIntervals = [];
-				selectedSections.forEach((section) => {
-					section.sessions.forEach((session) => {
-						const sStart = session.time.split('-')[0];
-						const sEnd = session.time.split('-')[1];
-						const [sh, sm] = sStart.split(':').map(Number);
-						const [eh, em] = sEnd.split(':').map(Number);
-						const startHour = sh + sm / 60;
-						const endHour = eh + em / 60;
-
-						busyIntervals.push({
-							day: session.day,
-							start: startHour,
-							end: endHour,
-							type: session.type,
-							classroom: session.classroom,
-							teacher: session.teacher,
-							section: section.section,
-						});
-					});
-				});
-
-				const payload = {
-					name,
-					studentCode: code,
-					schedule: busyIntervals,
-				};
+			document.getElementById('loadBtn').onclick = async () => {
+				const code = document.getElementById('loadBox').value.trim();
+				if (!code) return alert('Porfavor coloca tu codigo de estudiante');
 
 				try {
-					const res = await fetch('http://localhost:3000/saveSchedule', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify(payload),
-					});
-					const msg = await res.json();
-					alert('Guardado');
-				} catch (err) {
-					console.error(err);
-					alert('Hubo un error, contacta al delegado xd');
-				}
-			};
-		</script>
-		<script>
-			const customEventPopup = document.getElementById('customEventPopup');
-			document.getElementById('addCustomEventBtn').onclick = () => {
-				customEventPopup.style.display = 'block';
-			};
-
-			document.getElementById('cancelCustomBtn').onclick = () => {
-				customEventPopup.style.display = 'none';
-			};
-
-			document.getElementById('saveCustomBtn').onclick = () => {
-				const name = document.getElementById('customName').value.trim();
-				const day = parseInt(document.getElementById('customDay').value);
-				const start = document.getElementById('customStart').value;
-				const end = document.getElementById('customEnd').value;
-				console.log(name, day, start, end);
-				if (!name || !start || !end) {
-					alert('Porfavor rellena todos los campos xd');
-					return;
-				}
-
-				selectedSections.push({
-					subjectId: 'custom-' + Date.now(),
-					sectionId: 'evento',
-					subjectName: name,
-					sessions: [
-						{
-							day,
-							time: `${start}:00-${end}:00`,
-							classroom: 'N/A',
-							teacher: 'Custom',
-							type: 'C',
-						},
-					],
-				});
-				customEventPopup.style.display = 'none';
-				refreshCalendar();
-			};
-		</script>
-	</body>
-</html>
+					const res = await fetch(`${API_BASE}/loadSchedule/${code}`);
+					const data = await res.json();
+					if (data.error) {
+						alert(data.error);
+						re
