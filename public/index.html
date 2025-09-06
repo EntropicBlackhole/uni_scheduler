@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
+		<script>fetch("https://uni-scheduler.onrender.com/wakeup")</script>
 		<meta charset="UTF-8" />
 		<title>Schedule Selector</title>
 		<style>
@@ -200,7 +201,6 @@
 			</select>
 			<script>
 				async function agradecerAlUniverso(speciality) {
-				  await fetch("https://hortex.io")
 					if (speciality == '2') {
 						alert('Gracias universo por dejarme estudiar Ing. de Software<3');
 					} else if (speciality == '11') {
@@ -329,6 +329,7 @@
 
 			let currentSubject = null;
 			let selectedSections = [];
+			const checkboxSelections = {}
 
 			// --- search ---
 			document
@@ -410,6 +411,9 @@
 					ul.className = 'sessions';
 					sessList.forEach((s) => {
 						const li = document.createElement('li');
+						let hexcode = parseInt(Math.random() * 255, 16) // in theory this can only generate 255 possible codes, filling up 255 possible subjects only
+						li.id = `cbSelect-${hexcode}`
+						checkboxSelections[hexcode] = s
 						li.textContent = `Day ${s.day}, ${s.start}-${s.end}, ${s.classroom}, ${s.type}, ${s.teacher}`;
 						ul.appendChild(li);
 					});
@@ -438,17 +442,9 @@
 					cb.closest('.section-block')
 						.querySelectorAll('ul li')
 						.forEach((li) => {
-						  console.log(li)
-							const parts = li.textContent.split(',');
+							const parts = checkboxSelections[li.id];
 							
-							realSessions.push({
-								day: parseInt(parts[0].replace('Day', '').trim()),
-								start: parts[1].trim(),
-								end: parts[2].trim(),
-								classroom: parts[3].trim(),
-								type: parts[4].trim(),
-								teacher: parts[5]?.trim(),
-							});
+							realSessions.push(parts);
 						});
 
 					selectedSections.push({
@@ -457,7 +453,7 @@
 						sectionId,
 						sessions: realSessions,
 					});
-
+					console.log(checkboxSelections)
 					refreshCalendar(); // update FullCalendar
 					renderSineWave(); // update sine wave
 				});
@@ -493,8 +489,10 @@
 			function makeISODateForWeekday(mondayDate, weekdayIndex, timeStr) {
 				// weekdayIndex: 0=Mon .. 6=Sun
 				// timeStr: "HH:MM:SS"
+				console.log(timeStr)
 				const [h, m, s] = timeStr.split(':').map(Number);
 				const d = new Date(mondayDate);
+				console.log(h, m, s)
 				d.setDate(mondayDate.getDate() + weekdayIndex);
 				d.setHours(h, m, s || 0, 0);
 				return d.toISOString();
@@ -504,6 +502,7 @@
 				const events = [];
 				const monday = getMonday(); // you can change the reference week if needed
 				selectedSections.forEach((sec, i) => {
+					console.log(sec, "A")
 					const color = FC_COLORS[i % FC_COLORS.length];
 					
 					(sec.sessions || []).forEach((sess) => {
@@ -754,7 +753,6 @@
 					
 					refreshCalendar();
 					renderSineWave();
-					alert('Horario cargado');
 				} catch (err) {
 					console.error(err);
 					alert(err);
