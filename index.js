@@ -51,6 +51,11 @@ console.log("post-query")
   }
 });
 
+app.get('/wakeup', async (req, res) => {
+	console.log("despiertate sesamo")
+	res.json({ status: "OK"})
+})
+
 // 2> Load schedule
 app.get('/loadSchedule/:studentCode', async (req, res) => {
 	try {
